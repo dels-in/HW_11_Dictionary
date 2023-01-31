@@ -4,51 +4,69 @@ namespace HW_11;
 
 public class OtusDictionary
 {
-    private Dictionary<int, string> _array;
-
-    public OtusDictionary(int i)
+    class DictItem
     {
-        Fixture autoFixture = new Fixture();
-        _array = autoFixture
-            .CreateMany<KeyValuePair<int, string>>(i)
-            .ToDictionary(x => x.Key, x => x.Value);
+        public int Key = 0;
+        public string Value = null;
     }
 
-    public void Add(int keyToAdd, string? valueToAdd)
-    {
-        foreach (var element in _array)
-        {
-            if (element.Key == keyToAdd | element.Value == valueToAdd)
-                throw new Exception();
+    DictItem[] dictItems = new DictItem[32];
 
-            //не знаю, как иначе осуществить поиск коллизий, поэтому сделал реализацию через GetHashCode()
-            if (element.Key.GetHashCode() == keyToAdd.GetHashCode())
-            {
-                //еще и не понимаю, как передать значения старого словаря в новый с большим размером.
-                //Пытался и через foreach, но все перебираемые в нем элементы неизменяемые,
-                //а через for нельзя обратиться к конретному индексу словаря
-                var i = _array.Count;
-                _array = new Dictionary<int, string>(i * 2);
+    public int Size => dictItems.Length;
+
+    public void Add(int keyToAdd, string valueToAdd)
+    {
+        int index = keyToAdd % dictItems.Length;
+
+        var dictItem = new DictItem();
+        dictItem.Key = keyToAdd;
+        dictItem.Value = valueToAdd;
+
+        //resharper предлагает убрать проверку на нул, потому что, как я понимаю, класс DictItem не может быть нулевым
+        if (dictItems[index] != null)
+        {
+            if (dictItems[index].Key == keyToAdd)
+                throw new Exception(String.Format("Элемент с индексом " + keyToAdd + " существует"));
+
+            _resize();
+            index = keyToAdd % dictItems.Length;
+        }
+
+        dictItems[index] = dictItem;
+    }
+
+    public string Get(int key)
+    {
+        int index = key % dictItems.Length;
+        DictItem item = dictItems[index];
+        if (item == null)
+            throw new Exception("Элемент с таким ключом отсутствует");
+        return item.Value;
+    }
+    
+    public bool TryGet(int key, out string vle) {
+        vle = "";
+        int index = key % dictItems.Length;
+        DictItem item = dictItems[index];
+        if (item == null)
+            return false;
+        vle = item.Value;
+        return true;
+    }
+    
+    private void _resize()
+    {
+        DictItem[] newDictItems = new DictItem[dictItems.Length*2];
+        
+        foreach (var di in dictItems)
+        {
+            if (di != null) {
+                int index = di.Key % newDictItems.Length;
+                newDictItems[index] = di;
             }
-
-            _array.Add(keyToAdd, valueToAdd);
         }
-    }
-
-    public string? Get(int key)
-    {
-        foreach (var i in _array)
-        {
-            if (i.Key == key)
-                return i.Value;
-        }
-
-        Console.WriteLine("Элемент с таким ключом отстутствует");
-        return null;
-    }
-
-    public bool this[int result]
-    {
-        get { throw new NotImplementedException(); }
+        
+        dictItems = newDictItems;
     }
 }
+    
